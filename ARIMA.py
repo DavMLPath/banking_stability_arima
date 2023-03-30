@@ -3,33 +3,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 import warnings
-warnings.filterwarnings("ignore")
+from statsmodels.tsa.stattools import adfuller
 
+warnings.filterwarnings("ignore")
 
 z_score = pd.read_excel('/home/davo/Downloads/Factors.xlsx', sheet_name="Z-score")
 plt.plot(z_score['Month'], z_score['Z-score'])
 plt.title('Original chart')
 plt.xlabel('Month')
 plt.ylabel('Z-score')
-#plt.boxplot(z_score['Z-score'])
+plt.boxplot(z_score['Z-score'])
 f = plt.figure()
 f.set_figwidth(16)
 f.set_figheight(4)
-plt.show()
+#plt.show()
 
 
 z_score.set_index('Month', inplace=True)
 z_score.drop(['Unnamed: 2', 'Unnamed: 3'],axis=1, inplace=True)
 print(z_score.columns)
 
+
+plt.plot(z_score.index, z_score['Z-score'])
+plt.title('Z-score trend over time')
+plt.xlabel('Month')
+plt.ylabel('Z-score')
+f = plt.figure()
+f.set_figwidth(4)
+f.set_figheight(4)
+#plt.show()
+
 z_score_ori=z_score.copy()
 
+
 #Standardization of the data
-from statsmodels.tsa.stattools import adfuller
-# Create a sample time series
-from scipy.signal import detrend
-
-
+#Differencing for a 3 months
 z_score['Z-score']=z_score['Z-score']-z_score['Z-score'].shift(3)
 
 
@@ -40,7 +48,7 @@ plt.ylabel('Z-score')
 f = plt.figure()
 f.set_figwidth(4)
 f.set_figheight(4)
-plt.show()
+#plt.show()
 
 data=pd.Series( z_score['Z-score']).dropna()
 
@@ -49,27 +57,11 @@ result = adfuller(data)
 # Print the p-value and test statistic
 print('ADF Statistic:', result[0])
 print('p-value:', result[1])
-# Perform the ADF test
-# result_det = adfuller(detrended_data)
-# # Print the p-value and test sta
-# print('ADF Statistic:', result_det[0])
-# print('p-value:', result_det[1])
 
 
-#
-# #Splitting the data into test and train sets
-#
-# z_score['Z-score']=detrended_data
+#Splitting data into train and test split
 train_data = z_score[:int(0.8*(len(z_score)))]
 test_data = z_score[int(0.8*(len(z_score))):]
-#print('this is the test data', test_data)
-# # Create an instance of the ARIMA model
-# print('this is the number of NA-s',z_score.isna().count())
-# print(z_score.head())
-# # Create an instance of the ARIMA model
-#
-#
-#
 #running arima for different orders
 
 order_=[]
@@ -94,10 +86,10 @@ y_axis = rmse_
 
 #plotting arima for different orders
 plt.plot(x_axis, y_axis)
-plt.title('title name')
+plt.title('RMSE change for different orders of ARIMA')
 plt.xlabel('Order')
 plt.ylabel('rmse')
-plt.show()
+#plt.show()
 
 
 
@@ -108,41 +100,29 @@ model_fit = optimal_model.fit()
 print(model_fit.summary())
 #
 #
+
 opt_predictions = model_fit.forecast(steps=len(test_data))
 opt_mse = np.mean((opt_predictions - test_data['Z-score'].values) ** 2)
 opt_rmse = np.sqrt(opt_mse)
 print('this is rmse for 12.1.1 order', opt_rmse)
-#
-#
+
+
+
 #compering predicrtions with optimal values
-#
-#print(test_data.head())
-#print('the type of predictions is' , type(opt_predictions))
-#print('the type of test data is' , type(test_data))
 test_data=pd.DataFrame(test_data)
 test_data['pred_vales']=opt_predictions
-plt.plot(test_data)
-plt.plot(test_data)
-plt.title('title name')
-plt.xlabel('Order')
-plt.ylabel('rmse')
+test_data.plot()
+plt.title('Compeaision of predictions with original')
+plt.xlabel('Date')
+plt.ylabel('Z-score')
 plt.show()
 
 
+print(test_data.head(10))
+print(test_data.tail(10))
 
-
-#rearranging results, and training model on the full dataset
-
-
-
-
-
-
-plt.plot(z_score)
-#plt.plot(z_score_ori)
-plt.show()
-
-
+# #rearranging results, and training model on the full dataset
+#
 # step 1use shifted results== data , to train another model on the same order
 
 
@@ -156,84 +136,49 @@ opt_predictions = model_fit.forecast(steps=10)
 
 
 
-
 plt.plot(opt_predictions)
+plt.title('Predected values')
 plt.show()
-#
-# print(z_score_ori.tail(10))
-# print(z_score.tail(10))
-# print(opt_predictions.index)
-# print(type(opt_predictions))
 opt_predictions=opt_predictions.to_frame('Z-score')
-# print(opt_predictions.head())
-#
+
+"""
+Now lets concat predictions with original data, 
+for recovering shifted values
+"""
+
+
 total_series=pd.concat([z_score_ori,opt_predictions])
-
-
 
 l=list(total_series['Z-score'])
 l_n=[]
+
 for  i in range(len(l)):
     if i>=124:
-        l[i]+=l[i-3]
-        l_n.append(l[i])
-    print(l[i])
+        total_series.iloc[i,0]+=total_series.iloc[i-3,0]
 
-
-print('this is the index', total_series.index)
-
-recovered=pd.DataFrame(l_n)
-print('here are the recovered series',recovered)
-print('here is the type', type(total_series))
-print('check',total_series.iloc[124:126])
-print(z_score.head(10))
-#
-
-# plt.plot(l_n)
-# plt.plot(total_series)
-# plt.show()
-#
-#
-# print(len(l_n),len(l))
-
-#
-# t1=z_score.tail(20).shift(3)
-# t2=z_score.tail(20)
-#
-# print('this is t1',t1)
-# print('this is t2',t2)
-
-
-
-
-#print(l_n)
-# print(len(z_score_ori))
-# print(len(opt_predictions))
-# #
-# print(len(total_series))
-#
-#
-#
-
-#now lets try to use our model and train on entire data, after which we can predict next 10 years
-
-
-#now let's recover predictions  from their shifted values, so we need to add values from previews 3 months to the actual values
+print(total_series.head(10))
+print(total_series.tail(10))
+print(len(total_series))
 
 
 
 
 
 
-#
-#
-#
-# #finding best model with auto_arima library
-#
-#
-# from pmdarima import auto_arima
-# import warnings
-# warnings.filterwarnings("ignore")
-# stepwise_fit= auto_arima(train_data, start_p=0,  start_q=0,  max_p=4, max_q=4, trace=True,suppress_warnings=True)
-# stepwise_fit.summary()
-#
+#After this, we can plot original series and predections, in upcoming years
+
+
+
+ax = total_series.iloc[:124,:].plot(ls="-", color="b")
+ax2 = ax.twinx()           #Create a twin Axes sharing the xaxis
+
+total_series.iloc[124:,:].plot(ls="--", color="r", ax=ax)
+plt.axhline(y=0.5,linestyle="--",animated=True,label="False Alaram")
+
+plt.show()
+
+
+# After this step, we can now download a new series,
+# where we have original values for 2022, and see weather it makes scense or no
+
+#Then I can open a new branch in git hub and push my code, for assepting changes
