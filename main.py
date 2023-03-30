@@ -156,3 +156,42 @@ stepwise_fit.summary()
 3) Try that order on train data and compare test data
 4) after good results, predict future 10 years
 5) detrend predictions to get actual results
+
+
+
+
+
+
+l=list(total_series['Z-score'])
+l_n=[]
+
+for  i in range(len(l)):
+    if i>=124:
+        total_series.iloc[i,0]+=total_series.iloc[i-3,0]
+
+print(total_series.head(10))
+print(total_series.tail(10))
+
+
+          0
+0  32.697497
+1  33.546626
+2  34.020213
+3  33.952248
+4  34.866306
+5  35.483529
+6  35.261838
+7  36.299896
+8  36.665880
+9  37.455492
+           0
+0  32.697497
+1  33.546626
+2  34.020213
+3  33.952248
+4  34.866306
+5  35.483529
+6  35.261838
+7  36.299896
+8  36.665880
+9  37.455492
