@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-​
+
 z_score = pd.read_excel('/home/davo/Downloads/Factors.xlsx', sheet_name="Z-score")
-​
+
 z_score.set_index('Month', inplace=True)
 z_score.drop(['Unnamed: 2', 'Unnamed: 3'],axis=1, inplace=True)
 print(z_score.head())

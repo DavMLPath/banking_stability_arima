@@ -161,10 +161,6 @@ print(total_series.tail(10))
 print(len(total_series))
 
 
-
-
-
-
 #After this, we can plot original series and predections, in upcoming years
 
 
