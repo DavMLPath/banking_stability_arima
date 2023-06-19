@@ -86,8 +86,10 @@ for i in q_.keys():
     if i==best_rmse:
         print(q_[i], 'whoalla')
 
-final_model = SARIMAX(z_score, order=(2, 1, 1), seasonal_order=(1, 1, 1, 12))
 
+
+
+final_model = SARIMAX(z_score, order=(2, 1, 1), seasonal_order=(1, 1, 1, 12))
 final_result=final_model.fit()
 final_predictions = final_result.forecast(steps=10)
 
