@@ -67,7 +67,7 @@ for i in X:
 
 #
 #
-# corr_m_diff1=X.corr()
+corr_m_diff1=X.corr()
 #corr_m_diff1.to_excel(r'C:\Users\Davit\Desktop\corr_m_diff_2.xlsx', index=False)
 
 
@@ -303,3 +303,72 @@ print("p-value:", p_value)
 if p_value<=0.05:
     print('this is stationary')
 else: print('no ape jan not this time, non stationary ')
+
+
+
+
+
+# #multifactor arima model
+# import statsmodels.api as sm
+#
+# X=pd.read_excel(r'C:\Users\Davit\Downloads\Factors.xlsx', sheet_name='Factors')
+# X=X.fillna(0)
+# X=X.replace('-',0)
+# X=X.replace('####',0)
+# X=X.replace('#######',0)
+# exog_data = X[(X['Month']>='2012-01-01') &  (X['Month']<='2022-04-01')]
+#
+#
+# exog_data.set_index('Month', inplace=True)
+#
+# exog_train =exog_data[:int(0.8*(len(exog_data)))]
+# exog_test=  exog_data[int(0.8*(len(exog_data))):]
+# z_score_train=z_score[:int(0.8*(len(z_score)))]
+# z_score_test=z_score[int(0.8*(len(z_score))):]
+# print(len(exog_data))
+# print(len(exog_train))
+# print(len(z_score_train))
+#
+#
+# result = exog_train.dtypes
+#
+# print("Output:")
+# print(result)
+#
+#
+# model = sm.tsa.statespace.SARIMAX(z_score_train, exog=exog_train, order=(24, 0, 1))
+# results = model.fit()
+# print(results.summary())
+#
+#
+#
+#
+# forecast = results.forecast(steps=len(exog_test), exog=exog_test)
+# print(forecast)
+# print(len(forecast))
+# print(len(z_score_test))
+# print(forecast.head())
+# print(z_score_test.head())
+#
+#
+# print(type(forecast))
+# print(type(z_score_test['Z-score']))
+# import numpy as np
+# df=pd.DataFrame({'forecasts':forecast, 'Z_score':z_score_test['Z-score']})
+# print(df)
+#
+#
+# opt_mse = np.mean((df['forecasts']-df['Z_score'])** 2)
+# opt_rmse = np.sqrt(opt_mse)
+# print(opt_mse)
+#
+
+#
+# #Pur goal is to refactor this code, so that
+# 1)We have clear code for regression
+# 2)We have train test split
+# 3) We have ARIMA single factor p,d,q found manually and with auto ARIMA, and compare results
+# 4) We have meaningful results
+# 5) we evaluate model and publish
+
+

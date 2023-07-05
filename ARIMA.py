@@ -4,34 +4,24 @@ import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 import warnings
 from statsmodels.tsa.stattools import adfuller
+from statsmodels.graphics.tsaplots import plot_pacf
+from statsmodels.graphics.tsaplots import plot_acf
+from datetime import date, timedelta
 
 
 z_score = pd.read_excel('C:/Users/Davit/Desktop/Z-score recalculated.xlsx', sheet_name="Z-score")
+print(z_score.head())
 
-plt.plot(z_score['Month'], z_score['Z-score'])
-plt.title('Original chart')
-plt.xlabel('Month')
-plt.ylabel('Z-score')
-# plt.boxplot(z_score['Z-score'])
-# f = plt.figure()
-# f.set_figwidth(16)
-# f.set_figheight(4)
-#plt.show()
-#
-#
-
-#Todays
 z_score.set_index('Month', inplace=True)
-# #Standardization of the data
-# # plt.plot(z_score.index, z_score['Z-score'])
-# # plt.title('3 month differenced')
-# # plt.xlabel('Month')
-# # plt.ylabel('Z-score')
-# # f = plt.figure()
-# # f.set_figwidth(4)
-# # f.set_figheight(4)
-# # #plt.show()
-# #
+# Standardization of the data
+y=z_score.copy()
+result = adfuller(y)
+adf_statistic = result[0]
+p_value = result[1]
+
+print("ADF Statistic:", adf_statistic)
+print("p-value:",float(p_value) )
+print('----------------------------------------------------------------------')
 
 
 # # # Perform the ADF test to find d value for ARIMA
@@ -42,223 +32,141 @@ for i in range(1, 4):
     p_value = result[1]
 
     print("ADF Statistic:", adf_statistic)
-    print("p-value:", p_value)
-# # # Print the p-value and test statistic
+    print("p-value:", ("%.17f" % p_value).rstrip('0').rstrip('.'))
+
+
+#Plotting actual and differanced values of z-score
+y['Z-score'] = z_score['Z-score'] - z_score['Z-score'].shift(1).fillna(0)
+plt.plot(z_score.index, z_score['Z-score'],label='Original')
+plt.plot(z_score.index, y['Z-score'], label='1st differance')
+plt.title('Differenced VS Original series')
+plt.xlabel('Month')
+plt.ylabel('Z-score')
+plt.show()
 
 
 
+#
 
-# #
-# #
-# # #Splitting data into train and test split
-# # train_data = z_score[:int(0.8*(len(z_score)))]
-# # test_data = z_score[int(0.8*(len(z_score))):]
-# # #running arima for different orders
-# #
-# # order_=[]
-# # rmse_=[]
-# # for i in range(1,13):
-# #     model = ARIMA(train_data, order=(i,  1, 1))
-# #     # Fit the model
-# #     model_fit = model.fit()
-# #     print(model_fit.summary())
-# #     # Make predictions on the test data
-# #     predictions = model_fit.forecast(steps=len(test_data))
-# #     print("Those are the estimated values for the test data", predictions)
-# #     # Calculate MSE and RMSE
-# #     mse = np.mean((predictions - test_data['Z-score'].values)**2)
-# #     rmse = np.sqrt(mse)
-# #     print('mse is ', mse)
-# #     print('rmse is ', rmse)
-# #     order_.append(i)
-# #     rmse_.append(rmse)
-# # x_axis = order_
-# # y_axis = rmse_
-# #
-# # #plotting arima for different orders
-# # plt.plot(x_axis, y_axis)
-# # plt.title('RMSE change for different orders of ARIMA')
-# # plt.xlabel('Order')
-# # plt.ylabel('rmse')
-# # #plt.show()
-# #
-# #
-# #
-# # # #using optimal i value
-# # data=train_data
-# # optimal_model=ARIMA(data, order=(12,  1, 1))
-# # model_fit = optimal_model.fit()
-# # print(model_fit.summary())
-# # #
-# # #
-# #
-# # opt_predictions = model_fit.forecast(steps=len(test_data))
-# # opt_mse = np.mean((opt_predictions - test_data['Z-score'].values) ** 2)
-# # opt_rmse = np.sqrt(opt_mse)
-# # print('this is rmse for 12.1.1 order', opt_rmse)
-# #
-# #
-# #
-# # #now lets create an optimal model, which will
-# #
-# #
-# # #compering predicrtions with optimal values
-# # test_data=pd.DataFrame(test_data)
-# # test_data['pred_vales']=opt_predictions
-# # test_data.plot()
-# # plt.title('Compeaision of predictions with original')
-# # plt.xlabel('Date')
-# # plt.ylabel('Z-score')
-# # plt.show()
-# #
-# #
-# # print(test_data.head(10))
-# # print(test_data.tail(10))
-# #
-# # # #rearranging results, and training model on the full dataset
-# # #
-# # # step 1use shifted results== data , to train another model on the same order
-# #
-# #
-# # data=z_score
-# # optimal_model=ARIMA(data, order=(12,  1, 1))
-# # model_fit = optimal_model.fit()
+# Plot the autocorrelation function (ACF)
+plot_acf(y['Z-score'])
+plt.show()
+
+# Plot the partial autocorrelation function (PACF)
+plot_pacf(y['Z-score'])
+plt.show()
+
+#Based on the analyses, we can see that our best model is ARIMA(2,1,2)
+
+
+
+#Splitting data into train and test split
+test_size=4
+train_data = z_score[:(len(z_score))-test_size]
+test_data = z_score[(len(z_score))-test_size:]
+
+#Finding best orders with the help of PMDarima
+from pmdarima import auto_arima
+import warnings
+warnings.filterwarnings("ignore")
+stepwise_fit= auto_arima(train_data, trace=True,suppress_warnings=True)
+print('This is the summary for the first model',stepwise_fit.summary())
+
+model = ARIMA(train_data, order=(3,1,1))
+model_fit = model.fit()
+
+
+#Forecasts for the 1st model
+forecasts=model_fit.forecast(steps=len(test_data))
+print('forecast',forecasts)
+print('test data',test_data)
+forecasts.index=test_data.index
+
+#Mse for the 1st model
+
+from sklearn.metrics import mean_squared_error
+mse=mean_squared_error(forecasts,test_data)
+print('-----------------------Here is mse for pred vs original data',mse)
+
+
+
+#2nd model
+model2 = ARIMA(train_data, order=(2,1,2))
+model_fit2 = model2.fit()
+print('here is the summary for the second model',model_fit2.summary())
+
+#Forecasts for the 2-nd model
+forecasts2=model_fit2.forecast(steps=len(test_data))
+print('forecast for second model',forecasts2)
+print('test data',test_data)
+forecasts.index=test_data.index
+
+#Mse for the 1st model
+
+from sklearn.metrics import mean_squared_error
+mse=mean_squared_error(forecasts2,test_data)
+print('-----------------------Here is mse for pred vs original data for second model',mse)
+
+
+import matplotlib.dates as mdates
+forecasts2.index=test_data.index
+#Plotting test data and comparing with forecasts
+fig, ax = plt.subplots()
+plt.plot(forecasts, label=forecasts)
+plt.plot(forecasts2)
+ax.plot(test_data['Z-score'], label=test_data['Z-score'])
+ax.xaxis.set_major_locator(mdates.MonthLocator())
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+plt.title('Comperesion chart for test and actual results')
+plt.xlabel('Date')
+plt.ylabel('Z-score indicator')
+location = 0 # For the best location
+legend_drawn_flag = True
+plt.legend(["ARIMA(3,1,1)", "ARIMA(2,1,2)",'Test Data'], loc=0, frameon=legend_drawn_flag)
+from datetime import datetime
+plt.show()
+ax = plt.gca()
+ax.xaxis.set_major_locator(mdates.YearLocator())
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+plt.gcf().autofmt_xdate()
+
+
+#Retraining model for the full set with the following orders
+model = ARIMA(z_score, order=(3,1,1))
+model2 = ARIMA(z_score, order=(2,1,2))
+model_fit = model.fit()
+model2_fit=model2.fit()
+forecasts_full=model_fit.forecast(steps=5)
+forecasts2_full=model2_fit.forecast(steps=5)
+forecasts_full=pd.concat([z_score.iloc[-1,:],forecasts_full])
+forecasts2_full=pd.concat([z_score.iloc[-1,:],forecasts2_full])
+forecasts_full.index=pd.date_range(date(2023,3,1),date(2023,9,1),freq='m')
+forecasts2_full.index=pd.date_range(date(2023,3,1),date(2023,9,1),freq='m')
+
+forecasts_full=pd.DataFrame(forecasts_full, columns=['Z-score'])
+forecasts2_full=pd.DataFrame(forecasts2_full, columns=['Z-score'])
+
+
+plt.plot(z_score)
+plt.plot(forecasts_full);
+plt.plot(forecasts2_full)
+plt.legend(["Original series", "Prediction (ARIMA 3,1,1)",'Prediction (ARIMA 2,1,2)'], loc=0, frameon=legend_drawn_flag)
+
+plt.show()
+
+
 #
+# 2nd model
+# aic=393
+# BIC=407, 270
+# HQIC=398,804
 #
-# #
-# # new=pd.DataFrame(z_score_ori.index)
-# # new['Year']=new['Month'].dt.to_period('y')
-# # new.index=new['Month']
-# # print(new.head())
-# # z_score_ori['Year']=new['Year']
-# # grouped=z_score_ori.groupby(by='Year').mean()
-# # print(grouped)
-# #
-# # wbg_zscore=pd.read_excel('C:/Users/37493/OneDrive/Desktop/Z-score_wbg.xlsx', sheet_name="Data")
-# #
-# # wbg_zscore.rename(columns={'Country Name': 'Year', 'Armenia': 'Z-score'}, inplace=True)
-# # wbg_zscore.set_index('Year', inplace=True)
-# # #print(wbg_zscore.head())
-# # print(grouped['Z-score'].iloc[:-1])
-# # #Getting yearly z-score value
-# # wbg_zscore.index=wbg_zscore.index.astype(str)
-# # grouped.index=grouped.index.astype(str)
-# # wbg_zscore['z_score_calculated']=grouped['Z-score'].iloc[:-1]
-# # print(wbg_zscore.head())
-# #
-# # plt.plot(wbg_zscore['Z-score'])
-# # plt.plot(wbg_zscore['z_score_calculated'])
-# # plt.xlabel('Year')
-# # plt.ylabel('Z-score')
-# # plt.title('''Comparision of calculated Z-score
-# # with the Z-score published by WBG''')
-# # plt.show()
+# ll=-191,5
 #
-# #
-# #
-# # opt_predictions = model_fit.forecast(steps=10)
-# #
-# #
-# #
-# # plt.plot(opt_predictions)
-# # plt.title('Predected values')
-# # plt.show()
-# # opt_predictions=opt_predictions.to_frame('Z-score')
-# #
-# # """
-# # Now lets concat predictions with original data,
-# # for recovering shifted values
-# # """
-# #
-# #
-# # total_series=pd.concat([z_score_ori,opt_predictions])
-# #
-# # l=list(total_series['Z-score'])
-# # l_n=[]
-# #
-# # for  i in range(len(l)):
-# #     if i>=124:
-# #         total_series.iloc[i,0]+=total_series.iloc[i-3,0]
-# #
-# # print(total_series.head(10))
-# # print(total_series.tail(10))
-# # print(len(total_series))
-# #
-# #
-# # #After this, we can plot original series and predections, in upcoming years
-# #
-# #
-# #
-# # ax = total_series.iloc[:124,:].plot(ls="-", color="b")
-# # ax2 = ax.twinx()           #Create a twin Axes sharing the xaxis
-# #
-# # total_series.iloc[124:,:].plot(ls="--", color="r", ax=ax)
-# # plt.axhline(y=0.5,linestyle="--",animated=True,label="False Alaram")
-# # plt.title('This is the original series combined with predictions from last month')
-# # plt.show()
-# #
-# #
-# # # After this step, we can now download a new series,
-# # # where we have original values for 2022, and see weather it makes scense or no
-# #
-# # #Then I can open a new branch in git hub and push my code, for assepting changes
-#
-#
-#
-#
-# #multifactor arima model
-# import statsmodels.api as sm
-#
-# X=pd.read_excel(r'C:\Users\Davit\Downloads\Factors.xlsx', sheet_name='Factors')
-# X=X.fillna(0)
-# X=X.replace('-',0)
-# X=X.replace('####',0)
-# X=X.replace('#######',0)
-# exog_data = X[(X['Month']>='2012-01-01') &  (X['Month']<='2022-04-01')]
-#
-#
-# exog_data.set_index('Month', inplace=True)
-#
-# exog_train =exog_data[:int(0.8*(len(exog_data)))]
-# exog_test=  exog_data[int(0.8*(len(exog_data))):]
-# z_score_train=z_score[:int(0.8*(len(z_score)))]
-# z_score_test=z_score[int(0.8*(len(z_score))):]
-# print(len(exog_data))
-# print(len(exog_train))
-# print(len(z_score_train))
-#
-#
-# result = exog_train.dtypes
-#
-# print("Output:")
-# print(result)
-#
-#
-# model = sm.tsa.statespace.SARIMAX(z_score_train, exog=exog_train, order=(24, 0, 1))
-# results = model.fit()
-# print(results.summary())
-#
-#
-#
-#
-# forecast = results.forecast(steps=len(exog_test), exog=exog_test)
-# print(forecast)
-# print(len(forecast))
-# print(len(z_score_test))
-# print(forecast.head())
-# print(z_score_test.head())
-#
-#
-# print(type(forecast))
-# print(type(z_score_test['Z-score']))
-# import numpy as np
-# df=pd.DataFrame({'forecasts':forecast, 'Z_score':z_score_test['Z-score']})
-# print(df)
-#
-#
-# opt_mse = np.mean((df['forecasts']-df['Z_score'])** 2)
-# opt_rmse = np.sqrt(opt_mse)
-# print(opt_mse)
-#
+# 1st model
+# ll=-190,6
+# AIC=391
+# BIC=405,6
+# HQIQ=397/175
 
 
