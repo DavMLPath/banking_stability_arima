@@ -9,10 +9,24 @@ from statsmodels.graphics.tsaplots import plot_acf
 from datetime import date, timedelta
 
 
-z_score = pd.read_excel('C:/Users/Davit/Desktop/Z-score recalculated.xlsx', sheet_name="Z-score")
+z_score = pd.read_excel('C:/Users/Davit/Desktop/Z-score based on banking balance.xlsx', sheet_name="Z-score")
 print(z_score.head())
 
 z_score.set_index('Month', inplace=True)
+print('here is the z-score', z_score.tail(10))
+
+
+#Plotting the data
+plt.plot( z_score['Z-score'])
+plt.xlabel('Month')
+plt.ylabel('Z-score')
+plt.show()
+plt.boxplot(z_score['Z-score'])
+plt.show()
+
+
+
+
 # Standardization of the data
 y=z_score.copy()
 result = adfuller(y)
@@ -91,7 +105,7 @@ print('-----------------------Here is mse for pred vs original data',mse)
 
 
 #2nd model
-model2 = ARIMA(train_data, order=(2,1,2))
+model2 = ARIMA(train_data, order=(2,1,1))
 model_fit2 = model2.fit()
 print('here is the summary for the second model',model_fit2.summary())
 
@@ -117,25 +131,46 @@ plt.plot(forecasts2)
 ax.plot(test_data['Z-score'], label=test_data['Z-score'])
 ax.xaxis.set_major_locator(mdates.MonthLocator())
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-plt.title('Comperesion chart for test and actual results')
+#plt.title('Comparison chart of the test data and predicted values')
 plt.xlabel('Date')
 plt.ylabel('Z-score indicator')
 location = 0 # For the best location
 legend_drawn_flag = True
-plt.legend(["ARIMA(3,1,1)", "ARIMA(2,1,2)",'Test Data'], loc=0, frameon=legend_drawn_flag)
+plt.legend(["ARIMA(3,1,1)", "ARIMA(2,1,1)",'Test Data'], loc=0, frameon=legend_drawn_flag)
 from datetime import datetime
 plt.show()
-ax = plt.gca()
-ax.xaxis.set_major_locator(mdates.YearLocator())
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-plt.gcf().autofmt_xdate()
+
+import matplotlib.dates as mdates
+fig, ax = plt.subplots(figsize=(8, 6))
+
+half_year_locator = mdates.MonthLocator(interval=6)
+ax.xaxis.set_major_locator(half_year_locator) # Locator for major axis only.
+year_month_formatter = mdates.DateFormatter("%Y-%m") # four digits for year, two for month
+
+ax.xaxis.set_major_locator(half_year_locator)
+ax.xaxis.set_major_formatter(year_month_formatter) # formatter for major axis only
+
+
+
+
+# Rotates and right aligns the x labels.
+# Also moves the bottom of the axes up to make room for them.
+fig.autofmt_xdate()
+
+# Rotates and right aligns the x labels.
+# Also moves the bottom of the axes up to make room for them.
+fig.autofmt_xdate()
+
+
 
 
 #Retraining model for the full set with the following orders
 model = ARIMA(z_score, order=(3,1,1))
-model2 = ARIMA(z_score, order=(2,1,2))
+model2 = ARIMA(z_score, order=(2,1,1))
 model_fit = model.fit()
+print(model_fit.summary())
 model2_fit=model2.fit()
+print(model2_fit.summary())
 forecasts_full=model_fit.forecast(steps=5)
 forecasts2_full=model2_fit.forecast(steps=5)
 forecasts_full=pd.concat([z_score.iloc[-1,:],forecasts_full])
@@ -150,11 +185,14 @@ forecasts2_full=pd.DataFrame(forecasts2_full, columns=['Z-score'])
 plt.plot(z_score)
 plt.plot(forecasts_full);
 plt.plot(forecasts2_full)
-plt.legend(["Original series", "Prediction (ARIMA 3,1,1)",'Prediction (ARIMA 2,1,2)'], loc=0, frameon=legend_drawn_flag)
+plt.legend(["Original series", "Prediction (ARIMA 3,1,1)",'Prediction (ARIMA 2,1,1)'], loc=0, frameon=legend_drawn_flag)
+
 
 plt.show()
 
 
+print(forecasts_full)
+print(forecasts2_full)
 #
 # 2nd model
 # aic=393
